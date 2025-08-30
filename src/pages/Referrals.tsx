@@ -152,11 +152,13 @@ export default function Referrals() {
     telegramId, 
     balance, 
     totalReferrals, 
-    totalEarnings 
+    totalEarnings
   } = useFirebaseUserStore();
 
   useEffect(() => {
-    loadReferralStats();
+    if (telegramId) {
+      loadReferralStats();
+    }
   }, [telegramId]);
 
   // Force reload user data if referral code is missing
@@ -166,6 +168,27 @@ export default function Referrals() {
       loadUserData(telegramId);
     }
   }, [telegramId, referralCode, loadUserData]);
+
+  // Retry mechanism for loading user data
+  useEffect(() => {
+    const retryLoadUserData = async () => {
+      // Try to get telegram ID from WebApp if not available in store
+      if (!telegramId && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+        const webAppUserId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+        console.log('🔄 Retrying to load user data for WebApp user:', webAppUserId);
+        try {
+          await loadUserData(webAppUserId);
+        } catch (error) {
+          console.error('❌ Failed to load user data on retry:', error);
+        }
+      }
+    };
+
+    // Retry after 2 seconds if user data is not loaded
+    const timeoutId = setTimeout(retryLoadUserData, 2000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [telegramId, loadUserData]);
 
   const loadReferralStats = async () => {
     if (!telegramId) return;
@@ -363,10 +386,21 @@ export default function Referrals() {
 
   // Generate individual referral link for current user
   const generateIndividualReferralLink = () => {
-    console.log('🔗 Generating referral link...', { telegramId, referralCode });
+    console.log('🔗 Generating referral link...', { 
+      telegramId, 
+      referralCode,
+      hasTelegramId: !!telegramId,
+      hasReferralCode: !!referralCode,
+      userStore: useFirebaseUserStore.getState()
+    });
     
     if (!telegramId) {
       console.warn('❌ No telegram ID available for referral link generation');
+      console.log('🔍 Available user data:', {
+        telegramId,
+        referralCode,
+        userStore: useFirebaseUserStore.getState()
+      });
       return '';
     }
     

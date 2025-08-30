@@ -59,10 +59,25 @@ export const useFirebase = () => {
       const telegramId = userData.telegram_id;
       if (!telegramId) return false;
 
-      await setDoc(doc(db, 'users', telegramId), {
-        ...userData,
-        updated_at: new Date()
-      }, { merge: true });
+      // Check if user already exists
+      const userDoc = await getDoc(doc(db, 'users', telegramId));
+      
+      if (userDoc.exists()) {
+        console.log(`User ${telegramId} already exists. Updating existing user.`);
+        // Update existing user
+        await updateDoc(doc(db, 'users', telegramId), {
+          ...userData,
+          updated_at: new Date()
+        });
+      } else {
+        console.log(`Creating new user ${telegramId}`);
+        // Create new user
+        await setDoc(doc(db, 'users', telegramId), {
+          ...userData,
+          created_at: new Date(),
+          updated_at: new Date()
+        });
+      }
       
       return true;
     } catch (error) {

@@ -262,6 +262,25 @@ export const useUserStore = create<UserState>()(
 
       createUser: async (userData) => {
         try {
+          // Check if user already exists
+          const { data: existingUser, error: checkError } = await supabase
+            .from('users')
+            .select('telegram_id')
+            .eq('telegram_id', userData.telegram_id)
+            .single();
+
+          if (checkError && checkError.code !== 'PGRST116') {
+            throw checkError;
+          }
+
+          if (existingUser) {
+            console.log(`User ${userData.telegram_id} already exists. Skipping creation.`);
+            // Load existing user data instead
+            await get().loadUserData(userData.telegram_id);
+            return;
+          }
+
+          // Create new user only if doesn't exist
           const { error } = await supabase
             .from('users')
             .insert([userData]);

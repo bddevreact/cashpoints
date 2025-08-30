@@ -312,13 +312,24 @@ export const useFirebaseUserStore = create<UserState>()(
 
       createUser: async (userData) => {
         try {
+          // Check if user already exists
+          const userRef = doc(db, 'users', userData.telegram_id!);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            console.log(`User ${userData.telegram_id} already exists. Loading existing data.`);
+            // Load existing user data instead
+            await get().loadUserData(userData.telegram_id!);
+            return;
+          }
+
           // Generate unique referral code if not provided
           let referralCode = userData.referral_code;
           if (!referralCode) {
             referralCode = `BT${userData.telegram_id!.slice(-6).toUpperCase()}`;
           }
           
-          const userRef = doc(db, 'users', userData.telegram_id!);
+          // Create new user only if doesn't exist
           await setDoc(userRef, {
             ...userData,
             referral_code: referralCode,

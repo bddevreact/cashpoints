@@ -383,7 +383,7 @@ export default function Referrals() {
     }
     
     // Create bot referral link with auto-start trigger
-    const botUsername = 'CashPointsbot'; // Update with your actual bot username
+    const botUsername = 'CashPoinntbot'; // Update with your actual bot username
     const individualLink = `https://t.me/${botUsername}?start=${userReferralCode}`;
     
     console.log('✅ Generated referral link:', individualLink);

@@ -86,6 +86,7 @@ interface UserState {
   startRealTimeUpdates: () => void;
   stopRealTimeUpdates: () => void;
   refreshUserData: () => Promise<void>;
+  syncReferralCodes: () => Promise<void>;
 }
 
 export const useFirebaseUserStore = create<UserState>()(
@@ -286,6 +287,27 @@ export const useFirebaseUserStore = create<UserState>()(
               console.log('✅ Generated and saved referral code:', referralCode);
             }
             
+            // Ensure referral code exists in referralCodes collection
+            try {
+              const referralCodeRef = doc(db, 'referralCodes', referralCode);
+              const referralCodeDoc = await getDoc(referralCodeRef);
+              
+              if (!referralCodeDoc.exists()) {
+                console.log('⚠️ Referral code not found in referralCodes collection, creating...');
+                await setDoc(referralCodeRef, {
+                  user_id: telegramId,
+                  referral_code: referralCode,
+                  is_active: true,
+                  created_at: serverTimestamp(),
+                  total_uses: 0,
+                  total_earnings: 0
+                });
+                console.log('✅ Created referral code document in referralCodes collection:', referralCode);
+              }
+            } catch (referralError) {
+              console.error('⚠️ Error ensuring referral code in referralCodes collection:', referralError);
+            }
+            
             console.log('🎯 Setting user state with referral code:', referralCode);
             set({
               telegramId: userData.telegram_id,
@@ -340,6 +362,23 @@ export const useFirebaseUserStore = create<UserState>()(
             created_at: serverTimestamp(),
             updated_at: serverTimestamp()
           });
+          
+          // Also create referral code document in referralCodes collection
+          try {
+            const referralCodeRef = doc(db, 'referralCodes', referralCode);
+            await setDoc(referralCodeRef, {
+              user_id: userData.telegram_id!,
+              referral_code: referralCode,
+              is_active: true,
+              created_at: serverTimestamp(),
+              total_uses: 0,
+              total_earnings: 0
+            });
+            console.log('✅ Referral code document created in referralCodes collection:', referralCode);
+          } catch (referralError) {
+            console.error('⚠️ Error creating referral code document:', referralError);
+            // Continue even if referral code creation fails
+          }
           
           // Set local state
           set({
@@ -512,6 +551,48 @@ export const useFirebaseUserStore = create<UserState>()(
         const { telegramId } = get();
         if (telegramId) {
           await get().loadUserData(telegramId);
+        }
+      },
+
+      // Sync referral codes for existing users
+      syncReferralCodes: async () => {
+        const { telegramId } = get();
+        if (!telegramId) return;
+
+        try {
+          console.log('🔄 Syncing referral codes for user:', telegramId);
+          
+          // Get user's referral code
+          const userRef = doc(db, 'users', telegramId);
+          const userSnap = await getDoc(userRef);
+          
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            const referralCode = userData.referral_code;
+            
+            if (referralCode) {
+              // Check if referral code exists in referralCodes collection
+              const referralCodeRef = doc(db, 'referralCodes', referralCode);
+              const referralCodeSnap = await getDoc(referralCodeRef);
+              
+              if (!referralCodeSnap.exists()) {
+                // Create missing referral code document
+                await setDoc(referralCodeRef, {
+                  user_id: telegramId,
+                  referral_code: referralCode,
+                  is_active: true,
+                  created_at: serverTimestamp(),
+                  total_uses: 0,
+                  total_earnings: 0
+                });
+                console.log('✅ Created missing referral code document:', referralCode);
+              } else {
+                console.log('⏭️ Referral code already exists in referralCodes collection:', referralCode);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error syncing referral codes:', error);
         }
       }
     }),

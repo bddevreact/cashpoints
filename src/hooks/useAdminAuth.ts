@@ -61,7 +61,7 @@ export const useAdminAuth = () => {
           phoneNumber: null,
           photoURL: null,
           providerId: 'password'
-        } as AdminUser;
+        } as unknown as AdminUser;
         
         console.log('✅ Setting mock admin user in state');
         setUser(mockAdminUser);

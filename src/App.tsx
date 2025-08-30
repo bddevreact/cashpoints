@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, UNSAFE_future } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { WagmiProvider } from 'wagmi';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { config, queryClient } from './lib/wagmi';
@@ -29,15 +29,22 @@ function App() {
 
   // Initialize Telegram Web App and load user data
   useEffect(() => {
+    console.log('🚀 App initializing...');
+    console.log('📱 Telegram WebApp available:', !!window.Telegram?.WebApp);
+    
     // Check if Telegram WebApp API is available
     if (window.Telegram && window.Telegram.WebApp) {
       try {
+        console.log('🔧 Initializing Telegram WebApp...');
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
         
         // Load user data from Telegram and database
         const user = window.Telegram.WebApp.initDataUnsafe?.user;
+        console.log('👤 Telegram user data:', user);
+        
         if (user) {
+          console.log('✅ User found, loading data for ID:', user.id);
           setUser({
             name: user.first_name,
             photoUrl: user.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`
@@ -45,20 +52,46 @@ function App() {
           loadUserData(user.id.toString());
         } else {
           // No user data available - redirect to error page or show message
-          console.error('No Telegram user data available');
-          setLoading(false);
-          return;
+          console.error('❌ No Telegram user data available');
+          console.log('🔍 initDataUnsafe:', window.Telegram.WebApp.initDataUnsafe);
+          
+          // Development mode fallback - use test user data
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🛠️ Development mode: Using test user data');
+            const testUserId = '6873819352'; // Test user from admin dashboard
+            setUser({
+              name: 'Test User',
+              photoUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${testUserId}`
+            });
+            loadUserData(testUserId);
+          } else {
+            setLoading(false);
+            return;
+          }
         }
       } catch (error) {
-        console.error('Telegram WebApp API error:', error);
+        console.error('❌ Telegram WebApp API error:', error);
         setLoading(false);
         return;
       }
     } else {
       // Telegram WebApp not available - show error
-      console.error('Telegram WebApp API not available');
-      setLoading(false);
-      return;
+      console.error('❌ Telegram WebApp API not available');
+      console.log('🔍 window.Telegram:', window.Telegram);
+      
+      // Development mode fallback
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🛠️ Development mode: Using test user data');
+        const testUserId = '6873819352';
+        setUser({
+          name: 'Test User',
+          photoUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${testUserId}`
+        });
+        loadUserData(testUserId);
+      } else {
+        setLoading(false);
+        return;
+      }
     }
     
     // Set viewport height for mobile
@@ -83,7 +116,7 @@ function App() {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <div className="transition-opacity duration-500 opacity-100">
-          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Router>
             <Routes>
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminLogin />} />

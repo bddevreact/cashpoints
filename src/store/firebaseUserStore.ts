@@ -87,6 +87,7 @@ interface UserState {
   stopRealTimeUpdates: () => void;
   refreshUserData: () => Promise<void>;
   syncReferralCodes: () => Promise<void>;
+  refreshBalance: () => Promise<void>;
 }
 
 export const useFirebaseUserStore = create<UserState>()(
@@ -551,6 +552,31 @@ export const useFirebaseUserStore = create<UserState>()(
         const { telegramId } = get();
         if (telegramId) {
           await get().loadUserData(telegramId);
+        }
+      },
+
+      // Refresh balance from Firebase
+      refreshBalance: async () => {
+        const { telegramId } = get();
+        if (!telegramId) return;
+
+        try {
+          console.log('🔄 Refreshing balance for user:', telegramId);
+          const userRef = doc(db, 'users', telegramId);
+          const userSnap = await getDoc(userRef);
+          
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            const currentBalance = userData.balance || 0;
+            console.log('💰 Current balance from Firebase:', currentBalance);
+            
+            set({ balance: currentBalance });
+            console.log('✅ Balance refreshed successfully');
+          } else {
+            console.log('❌ User not found in Firebase');
+          }
+        } catch (error) {
+          console.error('❌ Error refreshing balance:', error);
         }
       },
 

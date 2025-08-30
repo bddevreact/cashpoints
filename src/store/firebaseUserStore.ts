@@ -52,6 +52,7 @@ interface UserState {
   
   // Referral system
   referralCode: string | null;
+  referralLink: string | null;
   referredBy: string | null;
   
   // Task & Activity stats
@@ -115,6 +116,7 @@ export const useFirebaseUserStore = create<UserState>()(
       isBanned: false,
       banReason: null,
       referralCode: null,
+      referralLink: null,
       referredBy: null,
       stats: {
         referrals_count: 0,
@@ -258,24 +260,33 @@ export const useFirebaseUserStore = create<UserState>()(
       },
 
       loadUserData: async (telegramId) => {
+        console.log('🔄 Loading user data for telegramId:', telegramId);
         try {
           const userRef = doc(db, 'users', telegramId);
           const userSnap = await getDoc(userRef);
 
+          console.log('📄 User document exists:', userSnap.exists());
+          
           if (userSnap.exists()) {
             const userData = userSnap.data() as FirebaseUser;
+            console.log('📊 User data from Firebase:', userData);
             
             // Ensure user has a referral code
             let referralCode = userData.referral_code;
+            console.log('🔗 Original referral code:', referralCode);
+            
             if (!referralCode) {
+              console.log('⚠️ No referral code found, generating new one...');
               referralCode = `BT${telegramId.slice(-6).toUpperCase()}`;
               // Update the user document with the generated referral code
               await updateDoc(userRef, {
                 referral_code: referralCode,
                 updated_at: serverTimestamp()
               });
+              console.log('✅ Generated and saved referral code:', referralCode);
             }
             
+            console.log('🎯 Setting user state with referral code:', referralCode);
             set({
               telegramId: userData.telegram_id,
               name: userData.first_name || userData.username || 'User',
@@ -295,6 +306,7 @@ export const useFirebaseUserStore = create<UserState>()(
               totalEarnings: userData.total_earnings || 0,
               totalReferrals: userData.total_referrals || 0,
               referralCode: referralCode,
+              referralLink: referralCode ? `https://t.me/CashPoinntbot?start=${referralCode}` : null,
               referredBy: userData.referred_by || null,
               isVerified: userData.is_verified || false,
               isBanned: userData.is_banned || false,
@@ -303,33 +315,25 @@ export const useFirebaseUserStore = create<UserState>()(
               lastEnergyRefill: userData.last_energy_refill || null,
               lastActive: userData.last_active || new Date()
             });
+            console.log('✅ User data loaded successfully');
+          } else {
+            console.log('❌ User document does not exist in Firebase');
           }
         } catch (error) {
-          console.error('Error loading user data:', error);
+          console.error('❌ Error loading user data:', error);
           throw error;
         }
       },
 
       createUser: async (userData) => {
         try {
-          // Check if user already exists
-          const userRef = doc(db, 'users', userData.telegram_id!);
-          const userSnap = await getDoc(userRef);
-
-          if (userSnap.exists()) {
-            console.log(`User ${userData.telegram_id} already exists. Loading existing data.`);
-            // Load existing user data instead
-            await get().loadUserData(userData.telegram_id!);
-            return;
-          }
-
           // Generate unique referral code if not provided
           let referralCode = userData.referral_code;
           if (!referralCode) {
             referralCode = `BT${userData.telegram_id!.slice(-6).toUpperCase()}`;
           }
           
-          // Create new user only if doesn't exist
+          const userRef = doc(db, 'users', userData.telegram_id!);
           await setDoc(userRef, {
             ...userData,
             referral_code: referralCode,
@@ -357,6 +361,7 @@ export const useFirebaseUserStore = create<UserState>()(
             totalEarnings: userData.total_earnings || 0,
             totalReferrals: userData.total_referrals || 0,
             referralCode: referralCode,
+            referralLink: referralCode ? `https://t.me/CashPoinntbot?start=${referralCode}` : null,
             referredBy: userData.referred_by || null,
             isVerified: userData.is_verified || false,
             isBanned: userData.is_banned || false,

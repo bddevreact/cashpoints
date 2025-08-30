@@ -5,13 +5,13 @@ import { useAdminAuth } from '../../hooks/useAdminAuth';
 import { motion } from 'framer-motion';
 
 export default function AdminLogin() {
-  const [email, setEmail] = useState('cashpoints@gmail.com');
-  const [password, setPassword] = useState('admin123');
+  const { getAdminCredentials, adminLogin, user, isAdmin } = useAdminAuth();
+  const [email, setEmail] = useState(() => getAdminCredentials().email);
+  const [password, setPassword] = useState(() => getAdminCredentials().password);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
-  const { adminLogin, user, isAdmin } = useAdminAuth();
 
   // Auto-redirect if already admin
   useEffect(() => {
@@ -37,8 +37,8 @@ export default function AdminLogin() {
     setSuccess(false);
 
     try {
-      // Use Firebase admin authentication
-      const success = await adminLogin();
+      // Use custom credentials for login
+      const success = await adminLogin(email, password);
 
       if (success) {
         // Show success message
@@ -51,7 +51,7 @@ export default function AdminLogin() {
           navigate('/admin/dashboard', { replace: true });
         }, 2000);
       } else {
-        throw new Error('Login failed');
+        throw new Error('Invalid email or password');
       }
 
     } catch (error) {
@@ -219,9 +219,8 @@ export default function AdminLogin() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full glass border border-white/10 rounded-lg py-3 px-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold transition-all duration-300"
-                  placeholder="cashpoints@gmail.com"
+                  placeholder="Enter admin email"
                   required
-                  readOnly
                 />
               </div>
             </div>
@@ -237,9 +236,8 @@ export default function AdminLogin() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full glass border border-white/10 rounded-lg py-3 px-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold transition-all duration-300"
-                  placeholder="admin123"
+                  placeholder="Enter admin password"
                   required
-                  readOnly
                 />
               </div>
             </div>
@@ -287,7 +285,16 @@ export default function AdminLogin() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 1.5 }}
           >
-
+            <div className="glass border border-gold/30 bg-gradient-to-r from-gold/10 to-transparent rounded-lg p-4 mb-4">
+              <h3 className="text-sm font-semibold text-gold mb-2">🔐 Current Admin Credentials</h3>
+              <div className="text-xs text-gray-300 space-y-1">
+                <p><strong>Email:</strong> {getAdminCredentials().email}</p>
+                <p><strong>Password:</strong> {"*".repeat(getAdminCredentials().password.length)}</p>
+              </div>
+              <p className="text-xs text-gold mt-2">
+                💡 You can change these from Admin Settings
+              </p>
+            </div>
             <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
               <Shield className="w-4 h-4" />
               <span>Firebase Authentication</span>

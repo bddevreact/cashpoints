@@ -287,13 +287,7 @@ export default function AdminLogin() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 1.5 }}
           >
-            <div className="glass border border-gold/30 bg-gradient-to-r from-gold/10 to-transparent rounded-lg p-4 mb-4">
-              <h3 className="text-sm font-semibold text-gold mb-2">🔐 Admin Credentials</h3>
-              <div className="text-xs text-gray-300 space-y-1">
-                <p><strong>Email:</strong> cashpoints@gmail.com</p>
-                <p><strong>Password:</strong> admin123</p>
-              </div>
-            </div>
+
             <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
               <Shield className="w-4 h-4" />
               <span>Firebase Authentication</span>
